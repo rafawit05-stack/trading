@@ -1,0 +1,3 @@
+ticker,market,playbook,sector,red_flag,earnings_is_thesis,sentiment_score,notes
+AAPL,US,A,Technology,,false,,Beispiel Breakout-Kandidat
+SAP.DE,EU,B,Technology,,false,,Beispiel Pullback-Kandidat

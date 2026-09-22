@@ -77,6 +77,25 @@ def test_gate_risk_reward_thresholds():
     assert gate_risk_reward(None).status == "unknown"
 
 
+def test_risk_plan_rr_after_costs_can_reach_gate_threshold(uptrend_df):
+    """Regression test: a bare 2R target can never clear G6 (>=2.0 after costs),
+    since costs are subtracted from the reward leg and added to the risk leg -
+    the after-cost ratio is then provably < raw ratio for any positive cost.
+    Target multiples must therefore include a cost buffer above 2R/3R."""
+    zero_cost_candidate = CandidateInput(
+        ticker="GOOD", market="US", playbook="A", commission_bps=0.0, slippage_bps=0.0
+    )
+    zero_cost_plan = build_risk_plan(uptrend_df, zero_cost_candidate, "A", is_a_plus=False)
+    assert zero_cost_plan is not None
+    assert zero_cost_plan.rr_raw > 2.0  # cost buffer built into the raw target, not just 2R
+    assert zero_cost_plan.rr_after_costs == pytest.approx(zero_cost_plan.rr_raw, rel=1e-6)
+
+    default_candidate = CandidateInput(ticker="GOOD", market="US", playbook="A")
+    default_plan = build_risk_plan(uptrend_df, default_candidate, "A", is_a_plus=False)
+    assert default_plan is not None
+    assert default_plan.rr_after_costs > 1.7  # strictly above the old (bugged) 2R-target value
+
+
 def test_sector_concentration_warning_triggers_above_limit():
     results = [
         EvaluationResult(

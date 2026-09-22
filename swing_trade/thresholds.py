@@ -36,3 +36,11 @@ MIN_RR_AFTER_COSTS = 2.0
 STOP_ATR_MULTIPLE = 1.5
 NOISE_FLOOR_ATR_MULTIPLE = 0.5  # Mindestabstand Entry->Stop, um Rauschen zu ueberstehen
 A_PLUS_MIN_WEIGHTED_SCORE = 8.5
+
+# T1 als rohes 2R-Ziel macht G6 (R:R >= 2.0 NACH Kosten) mathematisch unerreichbar:
+# Kosten werden vom Gewinn abgezogen UND zum Risiko addiert, daher liegt ein exakt
+# auf 2.0 kalibriertes rohes Ziel nach Kosten immer strikt unter 2.0, unabhaengig vom
+# Kandidaten. Siehe SKILL.md "Gaps found" fuer die Herleitung. Fix: T1/T2 bekommen
+# einen Kostenpuffer oberhalb der reinen 2R/3R-Vorgabe aus dem Framework-Text.
+TARGET_R_MULTIPLE_T1 = 2.3
+TARGET_R_MULTIPLE_T2 = 3.3

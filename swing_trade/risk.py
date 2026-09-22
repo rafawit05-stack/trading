@@ -11,6 +11,14 @@ dann von normalem Kursrauschen ausgeloest ("noise doesn't trigger" waere
 verletzt). Dieser Code ergaenzt daher einen Mindestabstand von 0.5*ATR: liegt
 der berechnete Stop enger als das, wird er auf den Mindestabstand aufgeweitet
 und die Anpassung im Trade-Plan vermerkt.
+
+Zweite Luecke: das Framework nennt T1 = 2R als Zielformel UND verlangt separat
+R:R >= 2.0 NACH Kosten als hartes Gate (G6). Beides gleichzeitig ist fuer
+jeden Kandidaten unerreichbar - Kosten werden vom Gewinn abgezogen und zum
+Risiko addiert, ein rohes Ziel von exakt 2R liegt nach Kosten daher IMMER
+unter 2.0, egal wie gut der Trade sonst aussieht (siehe SKILL.md). Fix: T1/T2
+verwenden einen leicht hoeheren Rohmultiplikator (TARGET_R_MULTIPLE_T1/2)
+als Kostenpuffer, damit G6 fuer echte Kandidaten ueberhaupt bestehbar bleibt.
 """
 
 from __future__ import annotations
@@ -25,6 +33,8 @@ from .thresholds import (
     MIN_RR_AFTER_COSTS,
     NOISE_FLOOR_ATR_MULTIPLE,
     STOP_ATR_MULTIPLE,
+    TARGET_R_MULTIPLE_T1,
+    TARGET_R_MULTIPLE_T2,
 )
 
 
@@ -79,8 +89,8 @@ def build_risk_plan(
         return None
 
     risk_per_share = entry - stop
-    target1 = entry + 2 * risk_per_share
-    target2 = entry + 3 * risk_per_share
+    target1 = entry + TARGET_R_MULTIPLE_T1 * risk_per_share
+    target2 = entry + TARGET_R_MULTIPLE_T2 * risk_per_share
 
     risk_pct = candidate.risk_pct_a_plus if is_a_plus else candidate.risk_pct_default
     risk_dollars = candidate.capital * risk_pct / 100

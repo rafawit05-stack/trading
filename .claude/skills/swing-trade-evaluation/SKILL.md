@@ -151,6 +151,17 @@ it implements every gate and scored factor above as auditable code with unit tes
 
 ### Gaps found in the framework text and how the code resolves them
 
+- **T1 = 2R and "R:R >= 2.0 after costs" (G6) are mutually exclusive.** Costs are
+  subtracted from the reward leg and added to the risk leg; with the target pinned to
+  *exactly* 2R, the after-cost ratio is provably below 2.0 for any positive cost,
+  regardless of the candidate. An audit across 131 real Yahoo Finance evaluations
+  (mega caps, DAX names, momentum small caps) confirmed this: every single one failed
+  G6 in the narrow 1.5-1.99 band, never above 2.0. The implementation resolves this by
+  targeting `TARGET_R_MULTIPLE_T1 = 2.3` / `TARGET_R_MULTIPLE_T2 = 3.3` (see
+  `thresholds.py`) instead of the bare 2R/3R from the framework text — a documented
+  cost buffer, not part of the original spec. G6 still fails for candidates whose stop
+  is very tight relative to price (cost then dominates the risk leg), which is the
+  gate's intended behaviour.
 - **Stop formula is under-specified.** `max(structure_stop, entry - 1.5*ATR)` bounds
   the loss but says nothing about a structure stop that sits *closer* than that to
   entry (which then violates "normal noise doesn't trigger"). The implementation adds

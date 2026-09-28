@@ -1,0 +1,2 @@
+ticker,market,playbook,entry_date,entry,stop,target1,target2,time_stop_sessions,shares,notes
+TWLO,US,A,2026-09-22,284.53,266.0395,327.0581,345.5485,10,5,Beispiel: Breakout-Trade aus dem Report vom 22.9.

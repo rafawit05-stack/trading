@@ -105,6 +105,12 @@ Wichtige Optionen:
   eigene `<TICKER>.csv`- und `BENCHMARK_US.csv`/`BENCHMARK_EU.csv`-Dateien
   (Spalten `Date,Open,High,Low,Close,Volume`) genutzt - z.B. wenn Yahoo Finance
   in der eigenen Netzwerkumgebung nicht erreichbar ist.
+- `--notify-sms` - verschickt nach dem Report eine Kurzsummary (Anzahl
+  bestaetigt/A+, Top-Kandidaten mit Entry/Stop/R:R) per Twilio-SMS. Zugangsdaten
+  ueber `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` und
+  `TWILIO_TO_NUMBER` (siehe `.env.example`); `--sms-to` ueberschreibt die
+  Zielnummer fuer einen einzelnen Lauf. Fehlt eine Zugangsdaten-Variable, bricht
+  der Lauf nicht ab, sondern meldet nur, dass die SMS nicht verschickt wurde.
 
 ### Tests
 

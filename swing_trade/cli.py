@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from .evaluate import DEFAULT_WEIGHTS, evaluate_candidate
+from .notify import NotifyConfigError, send_sms_summary
 from .report import render_report
 from .watchlist import load_watchlist
 
@@ -35,6 +36,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Eigene Gewichtung als 'Konzept=Zahl,...' (z.B. aus einem Backtest), sonst Gleichgewichtung.",
     )
     parser.add_argument("--output", "-o", type=Path, default=None)
+    parser.add_argument(
+        "--notify-sms",
+        action="store_true",
+        help="Kurzsummary per Twilio-SMS verschicken (Zugangsdaten aus TWILIO_*-Umgebungsvariablen).",
+    )
+    parser.add_argument(
+        "--sms-to",
+        type=str,
+        default=None,
+        help="Zielnummer fuer --notify-sms, ueberschreibt TWILIO_TO_NUMBER.",
+    )
     return parser.parse_args(argv)
 
 
@@ -101,6 +113,14 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Report gespeichert unter: {output_path}", file=sys.stderr)
     print(report)
+
+    if args.notify_sms:
+        try:
+            sid = send_sms_summary(results, to_number=args.sms_to)
+            print(f"SMS-Summary verschickt (SID: {sid})", file=sys.stderr)
+        except NotifyConfigError as exc:
+            print(f"SMS-Summary nicht verschickt: {exc}", file=sys.stderr)
+
     return 0
 
 

@@ -1,6 +1,6 @@
 """CLI zum Ueberwachen offener Positionen: prueft Stop/Target/Time-Stop gegen
 den aktuellen Kursverlauf, dokumentiert das Ergebnis als Markdown-Report und
-verschickt optional eine SMS pro ausgeloester Position (Stop/Target/Time-Stop).
+verschickt optional eine Telegram-Nachricht pro ausgeloester Position (Stop/Target/Time-Stop).
 
 Ergaenzt `swing_trade` (das NEUE Kandidaten aus einer Watchlist bewertet) um
 die Ueberwachung von Trades, die bereits eroeffnet wurden.
@@ -29,11 +29,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--price-dir", type=Path, default=None, help="Verzeichnis mit <TICKER>.csv (nur bei --data-source csv)")
     parser.add_argument("--output", "-o", type=Path, default=None)
     parser.add_argument(
-        "--notify-sms",
+        "--notify",
         action="store_true",
-        help="Bei jeder ausgeloesten Position (Stop/Target/Time-Stop) eine eigene Twilio-SMS verschicken.",
+        help="Bei jeder ausgeloesten Position (Stop/Target/Time-Stop) eine eigene Telegram-Nachricht verschicken.",
     )
-    parser.add_argument("--sms-to", type=str, default=None, help="Zielnummer fuer --notify-sms, ueberschreibt TWILIO_TO_NUMBER.")
+    parser.add_argument("--chat-id", type=str, default=None, help="Ziel-Chat fuer --notify, ueberschreibt TELEGRAM_CHAT_ID.")
     return parser.parse_args(argv)
 
 
@@ -76,15 +76,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Report gespeichert unter: {output_path}", file=sys.stderr)
     print(report)
 
-    if args.notify_sms:
+    if args.notify:
         try:
-            sids = send_exit_alerts(statuses, to_number=args.sms_to)
-            if sids:
-                print(f"{len(sids)} SMS-Alert(s) verschickt: {', '.join(sids)}", file=sys.stderr)
+            message_ids = send_exit_alerts(statuses, chat_id=args.chat_id)
+            if message_ids:
+                print(f"{len(message_ids)} Telegram-Alert(s) verschickt.", file=sys.stderr)
             else:
-                print("Keine SMS verschickt - keine Position hat Stop/Target/Time-Stop ausgeloest.", file=sys.stderr)
+                print("Keine Nachricht verschickt - keine Position hat Stop/Target/Time-Stop ausgeloest.", file=sys.stderr)
         except NotifyConfigError as exc:
-            print(f"SMS-Alerts nicht verschickt: {exc}", file=sys.stderr)
+            print(f"Telegram-Alerts nicht verschickt: {exc}", file=sys.stderr)
 
     return 0
 

@@ -1,62 +1,57 @@
-"""Optionale Twilio-SMS-Benachrichtigung nach einem swing_trade-Lauf."""
+"""Optionale Telegram-Benachrichtigung nach einem swing_trade-Lauf bzw. Positions-Check.
+
+Nutzt die Telegram Bot API direkt per HTTPS (kein SDK noetig) - siehe README
+fuer die Schritt-fuer-Schritt-Anleitung zum Anlegen des Bots.
+"""
 
 from __future__ import annotations
 
 import os
 
+import requests
+
 from .models import EvaluationResult, PositionStatus
 
-MAX_CANDIDATES_IN_SMS = 3
+MAX_CANDIDATES_IN_MESSAGE = 3
 
 ACTIONABLE_POSITION_STATUSES = {"stop_hit", "target1_hit", "target2_hit", "time_stop_expired"}
 
+TELEGRAM_API_BASE = "https://api.telegram.org"
+
 
 class NotifyConfigError(RuntimeError):
-    """Fehlende oder unvollstaendige Twilio-Konfiguration."""
+    """Fehlende oder unvollstaendige Telegram-Konfiguration."""
 
 
-def _twilio_client_and_from():
-    try:
-        from twilio.rest import Client
-    except ImportError as exc:
-        raise NotifyConfigError(
-            "twilio ist nicht installiert - `pip install -r requirements.txt` ausfuehren."
-        ) from exc
+def send_message(text: str, chat_id: str | None = None) -> int:
+    """Verschickt `text` per Telegram-Bot. Gibt die Telegram message_id zurueck.
 
-    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
-    from_number = os.environ.get("TWILIO_FROM_NUMBER")
+    Zugangsdaten aus TELEGRAM_BOT_TOKEN; Ziel-Chat aus `chat_id` oder
+    TELEGRAM_CHAT_ID (Parameter hat Vorrang).
+    """
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    target_chat_id = chat_id or os.environ.get("TELEGRAM_CHAT_ID")
 
     missing = [
         name
-        for name, value in [
-            ("TWILIO_ACCOUNT_SID", account_sid),
-            ("TWILIO_AUTH_TOKEN", auth_token),
-            ("TWILIO_FROM_NUMBER", from_number),
-        ]
+        for name, value in [("TELEGRAM_BOT_TOKEN", token), ("TELEGRAM_CHAT_ID", target_chat_id)]
         if not value
     ]
     if missing:
-        raise NotifyConfigError("Fehlende Twilio-Konfiguration: " + ", ".join(missing))
+        raise NotifyConfigError("Fehlende Telegram-Konfiguration: " + ", ".join(missing))
 
-    return Client(account_sid, auth_token), from_number
+    response = requests.post(
+        f"{TELEGRAM_API_BASE}/bot{token}/sendMessage",
+        json={"chat_id": target_chat_id, "text": text},
+        timeout=10,
+    )
+    if not response.ok:
+        raise NotifyConfigError(f"Telegram-API-Fehler ({response.status_code}): {response.text}")
 
-
-def send_sms(body: str, to_number: str | None = None) -> str:
-    """Verschickt `body` per Twilio-SMS. Gibt die Nachricht-SID zurueck.
-
-    Zielnummer aus `to_number` oder TWILIO_TO_NUMBER (Parameter hat Vorrang).
-    """
-    client, from_number = _twilio_client_and_from()
-    target_number = to_number or os.environ.get("TWILIO_TO_NUMBER")
-    if not target_number:
-        raise NotifyConfigError("Fehlende Twilio-Konfiguration: TWILIO_TO_NUMBER")
-
-    message = client.messages.create(body=body, from_=from_number, to=target_number)
-    return message.sid
+    return response.json()["result"]["message_id"]
 
 
-def build_sms_summary(results: list[EvaluationResult]) -> str:
+def build_summary_message(results: list[EvaluationResult]) -> str:
     confirmed = sorted(
         [r for r in results if not r.auto_rejected and not r.needs_manual_review],
         key=lambda r: r.weighted_score,
@@ -70,7 +65,7 @@ def build_sms_summary(results: list[EvaluationResult]) -> str:
         + "."
     ]
 
-    top = confirmed[:MAX_CANDIDATES_IN_SMS]
+    top = confirmed[:MAX_CANDIDATES_IN_MESSAGE]
     for r in top:
         rp = r.risk_plan
         marker = " A+" if r.is_a_plus else ""
@@ -86,13 +81,13 @@ def build_sms_summary(results: list[EvaluationResult]) -> str:
     return "\n".join(lines)
 
 
-def send_sms_summary(results: list[EvaluationResult], to_number: str | None = None) -> str:
-    """Verschickt eine SMS-Kurzsummary neuer Kandidaten via Twilio. Gibt die
-    Nachricht-SID zurueck."""
-    return send_sms(build_sms_summary(results), to_number=to_number)
+def send_summary_alert(results: list[EvaluationResult], chat_id: str | None = None) -> int:
+    """Verschickt eine Kurzsummary neuer Kandidaten per Telegram. Gibt die
+    Telegram message_id zurueck."""
+    return send_message(build_summary_message(results), chat_id=chat_id)
 
 
-def build_exit_sms(status: PositionStatus) -> str:
+def build_exit_message(status: PositionStatus) -> str:
     p = status.position
     label = {
         "stop_hit": "STOP",
@@ -108,13 +103,13 @@ def build_exit_sms(status: PositionStatus) -> str:
     )
 
 
-def send_exit_alerts(statuses: list[PositionStatus], to_number: str | None = None) -> list[str]:
+def send_exit_alerts(statuses: list[PositionStatus], chat_id: str | None = None) -> list[int]:
     """Verschickt fuer jede Position mit einem ausgeloesten Stop/Target/Time-Stop
-    eine eigene SMS. Gibt die Liste der verschickten Nachricht-SIDs zurueck.
-    Positionen im Status "open" werden nicht gemeldet.
+    eine eigene Telegram-Nachricht. Gibt die Liste der verschickten message_ids
+    zurueck. Positionen im Status "open" werden nicht gemeldet.
     """
-    sids = []
+    message_ids = []
     for status in statuses:
         if status.status in ACTIONABLE_POSITION_STATUSES:
-            sids.append(send_sms(build_exit_sms(status), to_number=to_number))
-    return sids
+            message_ids.append(send_message(build_exit_message(status), chat_id=chat_id))
+    return message_ids

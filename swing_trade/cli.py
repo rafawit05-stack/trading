@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from .evaluate import DEFAULT_WEIGHTS, evaluate_candidate
-from .notify import NotifyConfigError, send_sms_summary
+from .notify import NotifyConfigError, send_summary_alert
 from .report import render_report
 from .watchlist import load_watchlist
 
@@ -37,15 +37,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--output", "-o", type=Path, default=None)
     parser.add_argument(
-        "--notify-sms",
+        "--notify",
         action="store_true",
-        help="Kurzsummary per Twilio-SMS verschicken (Zugangsdaten aus TWILIO_*-Umgebungsvariablen).",
+        help="Kurzsummary per Telegram verschicken (Zugangsdaten aus TELEGRAM_*-Umgebungsvariablen).",
     )
     parser.add_argument(
-        "--sms-to",
+        "--chat-id",
         type=str,
         default=None,
-        help="Zielnummer fuer --notify-sms, ueberschreibt TWILIO_TO_NUMBER.",
+        help="Ziel-Chat fuer --notify, ueberschreibt TELEGRAM_CHAT_ID.",
     )
     return parser.parse_args(argv)
 
@@ -114,12 +114,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Report gespeichert unter: {output_path}", file=sys.stderr)
     print(report)
 
-    if args.notify_sms:
+    if args.notify:
         try:
-            sid = send_sms_summary(results, to_number=args.sms_to)
-            print(f"SMS-Summary verschickt (SID: {sid})", file=sys.stderr)
+            message_id = send_summary_alert(results, chat_id=args.chat_id)
+            print(f"Telegram-Summary verschickt (message_id: {message_id})", file=sys.stderr)
         except NotifyConfigError as exc:
-            print(f"SMS-Summary nicht verschickt: {exc}", file=sys.stderr)
+            print(f"Telegram-Summary nicht verschickt: {exc}", file=sys.stderr)
 
     return 0
 

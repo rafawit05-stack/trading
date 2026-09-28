@@ -69,3 +69,34 @@ class EvaluationResult:
     risk_plan: RiskPlan | None
     warnings: list[str]
     as_of: dt.date
+
+
+@dataclasses.dataclass
+class Position:
+    ticker: str
+    market: str  # "US" | "EU"
+    playbook: str  # "A" | "B"
+    entry_date: dt.date
+    entry: float
+    stop: float
+    target1: float
+    target2: float
+    time_stop_sessions: int
+    shares: int = 0
+    notes: str | None = None
+
+
+PositionStatusCode = str  # "open" | "stop_hit" | "target1_hit" | "target2_hit" | "time_stop_expired"
+
+
+@dataclasses.dataclass
+class PositionStatus:
+    position: Position
+    status: PositionStatusCode
+    as_of: dt.date
+    trigger_date: dt.date | None
+    trigger_price: float | None
+    current_price: float
+    sessions_held: int
+    unrealized_pct: float
+    action: str

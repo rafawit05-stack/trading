@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from .evaluate import DEFAULT_WEIGHTS, evaluate_candidate
+from .notify import NotifyConfigError, send_summary_alert
 from .report import render_report
 from .watchlist import load_watchlist
 
@@ -35,6 +36,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Eigene Gewichtung als 'Konzept=Zahl,...' (z.B. aus einem Backtest), sonst Gleichgewichtung.",
     )
     parser.add_argument("--output", "-o", type=Path, default=None)
+    parser.add_argument(
+        "--notify",
+        action="store_true",
+        help="Kurzsummary per Telegram verschicken (Zugangsdaten aus TELEGRAM_*-Umgebungsvariablen).",
+    )
+    parser.add_argument(
+        "--chat-id",
+        type=str,
+        default=None,
+        help="Ziel-Chat fuer --notify, ueberschreibt TELEGRAM_CHAT_ID.",
+    )
     return parser.parse_args(argv)
 
 
@@ -101,6 +113,14 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Report gespeichert unter: {output_path}", file=sys.stderr)
     print(report)
+
+    if args.notify:
+        try:
+            message_id = send_summary_alert(results, chat_id=args.chat_id)
+            print(f"Telegram-Summary verschickt (message_id: {message_id})", file=sys.stderr)
+        except NotifyConfigError as exc:
+            print(f"Telegram-Summary nicht verschickt: {exc}", file=sys.stderr)
+
     return 0
 
 

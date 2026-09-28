@@ -105,6 +105,57 @@ Wichtige Optionen:
   eigene `<TICKER>.csv`- und `BENCHMARK_US.csv`/`BENCHMARK_EU.csv`-Dateien
   (Spalten `Date,Open,High,Low,Close,Volume`) genutzt - z.B. wenn Yahoo Finance
   in der eigenen Netzwerkumgebung nicht erreichbar ist.
+- `--notify` - verschickt nach dem Report eine Kurzsummary (Anzahl
+  bestaetigt/A+, Top-Kandidaten mit Entry/Stop/R:R) per Telegram. Zugangsdaten
+  ueber `TELEGRAM_BOT_TOKEN` und `TELEGRAM_CHAT_ID` (siehe `.env.example`);
+  `--chat-id` ueberschreibt den Ziel-Chat fuer einen einzelnen Lauf. Fehlt eine
+  Zugangsdaten-Variable, bricht der Lauf nicht ab, sondern meldet nur, dass
+  die Nachricht nicht verschickt wurde.
+
+  Bot anlegen: mit **@BotFather** in Telegram chatten, `/newbot` senden -> man
+  bekommt den `TELEGRAM_BOT_TOKEN`. Danach dem eigenen Bot einmal selbst
+  schreiben (Bots duerfen sonst nicht zuerst schreiben) und die eigene
+  `TELEGRAM_CHAT_ID` unter `https://api.telegram.org/bot<TOKEN>/getUpdates`
+  im Feld `"chat":{"id": ...}` ablesen.
+
+### Positionen ueberwachen (Stop/Target/Time-Stop)
+
+`swing_trade` bewertet neue Kandidaten aus einer Watchlist. Fuer bereits
+eroeffnete Trades gibt es zusaetzlich `swing_trade.monitor`: es prueft den
+Kursverlauf seit dem Entry-Datum gegen Stop/Target1/Target2/Time-Stop aus dem
+eigenen Trade-Plan und dokumentiert das Ergebnis als Markdown-Report.
+
+```bash
+python -m swing_trade.monitor positions.example.csv --notify
+```
+
+Die Positions-Datei ist eine CSV mit den Spalten `ticker,market,playbook,
+entry_date,entry,stop,target1,target2,time_stop_sessions,shares,notes` (siehe
+`positions.example.csv`) - die Werte kommen 1:1 aus dem Trade-Plan im
+swing_trade-Report, den du beim Einstieg gespeichert hast.
+
+Pro Position wird genau eine Telegram-Nachricht verschickt, wenn Stop,
+Target 1, Target 2 oder der Time-Stop seit dem letzten Check ausgeloest wurde
+(`--notify`, gleiche Telegram-Konfiguration wie oben); Positionen im Status
+"open" bleiben stumm, um Spam zu vermeiden. Stop wird ueber das Tagestief,
+Targets ueber das Tageshoch seit Entry-Datum geprueft - ohne Beruecksichtigung
+von Gaps/Slippage bei der tatsaechlichen Ausfuehrung.
+
+### Automatisierung (taeglicher Check per Cron/Routine)
+
+Fuer eine vollautomatische Benachrichtigung ("Aktie sieht gut aus" /
+"Position sollte geschlossen werden") beide Befehle regelmaessig (z.B. nach
+US-Marktschluss) laufen lassen, z.B. per Cron:
+
+```bash
+# 22:30 CEST (Mo-Fr) = nach US-Marktschluss
+30 20 * * 1-5 cd /pfad/zum/repo && python -m swing_trade watchlist.csv --notify
+30 20 * * 1-5 cd /pfad/zum/repo && python -m swing_trade.monitor meine_positionen.csv --notify
+```
+
+Jeder Lauf dokumentiert das Ergebnis vollstaendig als Markdown in `reports/`
+(Entry/Stop/Targets/Time-Stop/Invalidation bzw. Status/Aktion je Position) -
+die SMS ist nur der kurze Hinweis, der Report ist die Doku.
 
 ### Tests
 

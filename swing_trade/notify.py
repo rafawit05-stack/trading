@@ -70,8 +70,8 @@ def build_summary_message(results: list[EvaluationResult]) -> str:
         rp = r.risk_plan
         marker = " A+" if r.is_a_plus else ""
         lines.append(
-            f"{r.candidate.ticker}{marker}: Entry {rp.entry} Stop {rp.stop} "
-            f"R:R {rp.rr_after_costs}"
+            f"{r.candidate.ticker}{marker} (Playbook {r.candidate.playbook}, Score {r.weighted_score:.1f}/10): "
+            f"Entry {rp.entry} Stop {rp.stop} R:R {rp.rr_after_costs}"
         )
 
     if not confirmed:
